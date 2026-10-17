@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef, type CSSProperties, type RefObject } from "react";
 import { RING } from "@/lib/oracle/universe";
 
 type Props = {
@@ -11,6 +11,7 @@ type Props = {
   /** Generation of the 本卦 row; null while still running. */
   focusGen: number | null;
   className?: string;
+  style?: CSSProperties;
 };
 
 const MIN_CELL_CSS = 4;
@@ -21,7 +22,7 @@ function readCssColor(name: string, fallback: string): string {
 }
 
 /** Spacetime diagram of the 256-cell ring, newest generation at the bottom. */
-export function RingTape({ rowsRef, firstRef, tick, head, focusGen, className }: Props) {
+export function RingTape({ rowsRef, firstRef, tick, head, focusGen, className, style }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -116,7 +117,7 @@ export function RingTape({ rowsRef, firstRef, tick, head, focusGen, className }:
   }, [tick, head, focusGen, rowsRef, firstRef]);
 
   return (
-    <div ref={wrapRef} className={className ?? "h-64 sm:h-80 lg:h-96"}>
+    <div ref={wrapRef} className={className ?? "h-64 sm:h-80 lg:h-96"} style={style}>
       <canvas
         ref={canvasRef}
         className="block h-full w-full"

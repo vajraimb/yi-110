@@ -3,12 +3,15 @@ import { createHash } from "node:crypto";
 import { describe, it } from "node:test";
 import { HEX_BY_KEY, HEX_BY_KING } from "../iching.ts";
 import { caCast, parseCastId, yarrowCast, yarrowId } from "./cast.ts";
+import { ETHER, etherStats } from "./ether.ts";
 import { FUXI_GRID, fuxiOrdinal } from "./fuxi.ts";
+import { dayPillar, fourPillars, solarMonth, termDay } from "./ganzhi.ts";
 import { readCast } from "./reading.ts";
 import { nuclearKey, oppositeKey, reverseKey } from "./relations.ts";
 import { sha256, toHex } from "./sha256.ts";
 import { lineTitle, textOf } from "./texts.ts";
 import {
+  RING,
   initialRing,
   keyOfLines,
   readHead,
@@ -99,6 +102,51 @@ describe("reading", () => {
     const four = readCast(qian, kun, [true, true, true, true, false, false]);
     assert.equal(four.passages[0].from, "zhi");
     assert.equal(four.passages[0].line, 4);
+  });
+});
+
+describe("ether", () => {
+  it("recognises the Rule 110 background and its drift", () => {
+    const row = new Uint8Array(RING);
+    for (let i = 0; i < RING; i++) row[i] = ETHER[i % 14];
+    // 256 is not a multiple of 14, so the seam breaks the pattern once.
+    const stats = etherStats(row, 0);
+    assert.ok(stats.share > 0.85, `share ${stats.share}`);
+    assert.ok(stats.structures <= 1);
+    assert.equal(stats.headOnEther, true);
+    let next: Uint8Array = row;
+    for (let t = 0; t < 7; t++) next = stepRing(next);
+    assert.ok(etherStats(next, 0).share > 0.8);
+    assert.equal(etherStats(initialRing(seedFromQuestion("x", new Date(0))), 0).phase, "raw");
+  });
+});
+
+describe("ganzhi", () => {
+  it("matches known day pillars", () => {
+    assert.equal(dayPillar(2000, 1, 1).text, "戊午");
+    assert.equal(dayPillar(1949, 10, 1).text, "甲子");
+  });
+
+  it("places the 节 on the right days", () => {
+    assert.equal(termDay(2026, 2), 4);
+    assert.equal(termDay(2026, 1), 5);
+    assert.equal(termDay(2026, 10), 8);
+    assert.equal(solarMonth(2026, 10, 17).index, 8);
+    assert.equal(solarMonth(2026, 2, 3).yearOffset, -1);
+    assert.equal(solarMonth(2026, 2, 4).yearOffset, 0);
+  });
+
+  it("builds four pillars with 晚子时 rolling the day", () => {
+    const p = fourPillars(new Date(2026, 9, 17, 16, 53));
+    assert.equal(p.year.text, "丙午");
+    assert.equal(p.month.text, "戊戌");
+    assert.equal(p.hour.branch, 8);
+    assert.equal(p.term, "寒露");
+    const late = fourPillars(new Date(2026, 9, 17, 23, 30));
+    assert.equal(late.day.text, dayPillar(2026, 10, 18).text);
+    assert.equal(late.hour.branch, 0);
+    const beforeSpring = fourPillars(new Date(2026, 1, 3, 10, 0));
+    assert.equal(beforeSpring.year.text, "乙巳");
   });
 });
 

@@ -30,12 +30,14 @@ export function AskForm() {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const q = question.trim();
+    const at = new Date();
+    const t = Math.floor(at.getTime() / 1000);
     if (method === "ca") {
-      const seed = seedFromQuestion(q);
+      const seed = seedFromQuestion(q, at);
       void navigate({
         to: "/cast/$id",
         params: { id: seed.hex },
-        search: { q: q || undefined, g: undefined },
+        search: { q: q || undefined, g: undefined, t },
       });
     } else {
       const yi = castYi(() => {
@@ -46,7 +48,7 @@ export function AskForm() {
       void navigate({
         to: "/cast/$id",
         params: { id: yarrowId(yi.lines) },
-        search: { q: q || undefined, g: undefined },
+        search: { q: q || undefined, g: undefined, t },
       });
     }
   };

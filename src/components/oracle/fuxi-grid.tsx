@@ -1,4 +1,6 @@
-import { HEX_BY_KEY, TRIGRAMS } from "@/lib/iching";
+import { useState } from "react";
+import { HEX_BY_KEY, TRIGRAMS, imageName } from "@/lib/iching";
+import { textOf } from "@/lib/oracle/texts";
 import { FUXI_GRID, XIANTIAN } from "@/lib/oracle/fuxi";
 import { linesOfKey } from "@/lib/oracle/universe";
 import { HexMark } from "@/components/cosmos/hex-mark";
@@ -20,6 +22,9 @@ export function FuxiGrid({
   zhiKey: number;
   nuclearKey?: number;
 }) {
+  const [picked, setPicked] = useState<number | null>(null);
+  const shown = HEX_BY_KEY[picked ?? benKey];
+  const shownText = textOf(shown.king);
   return (
     <div className="min-w-0">
       <div className="grid grid-cols-[1.25rem_repeat(8,minmax(0,1fr))] gap-1">
@@ -37,9 +42,19 @@ export function FuxiGrid({
             benKey={benKey}
             zhiKey={zhiKey}
             nuclearKey={nuclearKey}
+            picked={picked}
+            onPick={(key) => setPicked((prev) => (prev === key ? null : key))}
           />
         ))}
       </div>
+      <p className="mt-3 text-sm" aria-live="polite">
+        <span className="font-semibold">{shown.name}</span>
+        <span className="ml-2 text-muted">
+          第 {shown.king} 卦 · {imageName(shown)} · {shownText.keyword}
+          {picked === null ? "（本卦）" : ""}
+        </span>
+        <span className="ml-2 text-xs text-muted sm:hidden">点格子看卦名</span>
+      </p>
       <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted">
         <span>
           <i className="mr-1 inline-block size-2 bg-cinnabar align-middle" aria-hidden />
@@ -70,12 +85,16 @@ function Row({
   benKey,
   zhiKey,
   nuclearKey,
+  picked,
+  onPick,
 }: {
   upper: number;
   row: number;
   benKey: number;
   zhiKey: number;
   nuclearKey?: number;
+  picked: number | null;
+  onPick: (key: number) => void;
 }) {
   return (
     <>
@@ -87,10 +106,15 @@ function Row({
         const isBen = cell.key === benKey;
         const isZhi = cell.key === zhiKey;
         const isNuclear = nuclearKey === cell.key;
+        const isPicked = picked === cell.key;
         return (
-          <div
+          <button
             key={cell.key}
+            type="button"
             title={`${hex.king} ${hex.name}`}
+            aria-label={`第 ${hex.king} 卦 ${hex.name}`}
+            aria-pressed={isPicked}
+            onClick={() => onPick(cell.key)}
             className={cx(
               // Explicit heights: aspect-ratio items inside a flex column collapse the parent on iOS Safari.
               "flex h-9 flex-col items-center justify-center gap-0.5 rounded-sm border p-0.5 sm:h-14 sm:p-1",
@@ -101,6 +125,7 @@ function Row({
                   : isNuclear
                     ? "border-dashed border-muted"
                     : "border-line/60",
+              isPicked && "ring-2 ring-muted/60",
             )}
           >
             <span className="w-full max-w-5">
@@ -118,7 +143,7 @@ function Row({
             >
               {hex.name}
             </span>
-          </div>
+          </button>
         );
       })}
     </>

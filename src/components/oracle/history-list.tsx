@@ -1,20 +1,9 @@
-import { useSyncExternalStore } from "react";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { HEX_BY_KING } from "@/lib/iching";
 import { useHistory } from "@/lib/oracle/history";
+import { useMounted } from "@/lib/use-mounted";
 import { HexMark } from "@/components/cosmos/hex-mark";
-
-const noop = () => () => {};
-
-/** localStorage only exists on the client; render the list after hydration. */
-function useMounted(): boolean {
-  return useSyncExternalStore(
-    noop,
-    () => true,
-    () => false,
-  );
-}
 
 export function HistoryList() {
   const mounted = useMounted();
@@ -46,7 +35,7 @@ export function HistoryList() {
               <Link
                 to="/cast/$id"
                 params={{ id: e.id }}
-                search={{ g: e.gen, q: e.question || undefined }}
+                search={{ g: e.gen, q: e.question || undefined, t: Math.floor(e.at / 1000) }}
                 className="min-w-0 flex-1"
               >
                 <p className="truncate text-sm">

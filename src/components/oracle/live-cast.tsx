@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { HEX_BY_KEY } from "@/lib/iching";
+import { PHASE_LABEL, etherStats, type EtherStats } from "@/lib/oracle/ether";
 import {
   initialRing,
   keyOfLines,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/oracle/universe";
 import { HexMark } from "@/components/cosmos/hex-mark";
 import { HeadLens } from "./head-lens";
+import { PhaseMeter } from "./phase-meter";
 import { RingTape } from "./ring-tape";
 
 const KEEP = 320;
@@ -20,7 +22,7 @@ const INTERVAL_MS = 110;
  * The cast in progress. The ring runs under Rule 110 until the asker stops
  * it; stopping writes the generation into the URL, which is the whole cast.
  */
-export function LiveCast({ seed, question }: { seed: Seed; question?: string }) {
+export function LiveCast({ seed, question, at }: { seed: Seed; question?: string; at?: number }) {
   const navigate = useNavigate();
   const rowsRef = useRef<Uint8Array[]>([initialRing(seed)]);
   const firstRef = useRef(0);
@@ -29,6 +31,7 @@ export function LiveCast({ seed, question }: { seed: Seed; question?: string }) 
   const [tick, setTick] = useState(0);
   const [gen, setGen] = useState(0);
   const [liveKey, setLiveKey] = useState(() => keyOfLines(readHead(rowsRef.current[0], seed.head)));
+  const [stats, setStats] = useState<EtherStats>(() => etherStats(rowsRef.current[0], seed.head));
 
   const stop = useCallback(() => {
     if (stoppedRef.current) return;
@@ -36,10 +39,10 @@ export function LiveCast({ seed, question }: { seed: Seed; question?: string }) 
     void navigate({
       to: "/cast/$id",
       params: { id: seed.hex },
-      search: { g: genRef.current, q: question || undefined },
+      search: { g: genRef.current, q: question || undefined, t: at },
       replace: true,
     });
-  }, [navigate, seed.hex, question]);
+  }, [navigate, seed.hex, question, at]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -57,6 +60,7 @@ export function LiveCast({ seed, question }: { seed: Seed; question?: string }) 
       genRef.current += 1;
       setGen(genRef.current);
       setLiveKey(keyOfLines(readHead(rows[rows.length - 1], seed.head)));
+      setStats(etherStats(rows[rows.length - 1], seed.head));
       setTick((t) => t + 1);
     }, INTERVAL_MS);
     return () => window.clearInterval(timer);
@@ -115,9 +119,12 @@ export function LiveCast({ seed, question }: { seed: Seed; question?: string }) 
       </div>
 
       <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
-        <div className="max-w-xs">
-          <p className="mb-1 text-xs text-muted">读头 · 第 {seed.head} 格起</p>
-          <HeadLens benRow={lastRow} zhiRow={null} head={seed.head} />
+        <div className="flex flex-col gap-3">
+          <PhaseMeter stats={stats} />
+          <div className="max-w-xs">
+            <p className="mb-1 text-xs text-muted">读头 · 第 {seed.head} 格起</p>
+            <HeadLens benRow={lastRow} zhiRow={null} head={seed.head} />
+          </div>
         </div>
         <button
           type="button"
@@ -130,6 +137,10 @@ export function LiveCast({ seed, question }: { seed: Seed; question?: string }) 
       <p className="hidden text-xs text-muted sm:block">也可以按空格。</p>
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/95 px-4 py-3 backdrop-blur sm:hidden">
+        <p className="mb-2 text-center font-mono text-[11px] text-muted tabular-nums">
+          {PHASE_LABEL[stats.phase].name} · 以太 {Math.round(stats.share * 100)}% ·{" "}
+          {stats.structures} 处结构
+        </p>
         <button
           type="button"
           onClick={stop}

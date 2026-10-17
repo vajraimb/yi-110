@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { RotateCcw } from "lucide-react";
-import { LINE_NAMES, type Hexagram } from "@/lib/iching";
+import { HEX_BY_KING, LINE_NAMES, kingFromRuleNumber, type Hexagram } from "@/lib/iching";
+import { etherStats } from "@/lib/oracle/ether";
 import type { Cast } from "@/lib/oracle/cast";
 import { useHistory } from "@/lib/oracle/history";
 import type { Passage } from "@/lib/oracle/reading";
@@ -12,6 +13,8 @@ import { YinYangLine } from "@/components/cosmos/hex-mark";
 import { FuxiGrid } from "./fuxi-grid";
 import { HeadLens } from "./head-lens";
 import { HexagramCard } from "./hexagram-card";
+import { MomentCard } from "./moment-card";
+import { PhaseMeter } from "./phase-meter";
 import { RingTape } from "./ring-tape";
 import { ShareButton } from "./share-button";
 
@@ -19,7 +22,15 @@ function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(" ");
 }
 
-export function ReadingView({ cast, question }: { cast: Cast; question?: string }) {
+export function ReadingView({
+  cast,
+  question,
+  at,
+}: {
+  cast: Cast;
+  question?: string;
+  at?: number;
+}) {
   const remember = useHistory((s) => s.remember);
 
   useEffect(() => {
@@ -28,12 +39,12 @@ export function ReadingView({ cast, question }: { cast: Cast; question?: string 
       method: cast.method,
       gen: cast.method === "ca" ? cast.gen : undefined,
       question: question ?? "",
-      at: Date.now(),
+      at: at ? at * 1000 : Date.now(),
       benKing: cast.ben.king,
       zhiKing: cast.zhi.king,
       changes: cast.reading.changes,
     });
-  }, [cast, question, remember]);
+  }, [cast, question, at, remember]);
 
   const moved = cast.reading.changes > 0;
   const benText = textOf(cast.ben.king);
@@ -55,7 +66,7 @@ export function ReadingView({ cast, question }: { cast: Cast; question?: string 
             <Link
               to="/cast/$id"
               params={{ id: cast.id }}
-              search={{ q: question || undefined, g: undefined }}
+              search={{ q: question || undefined, g: undefined, t: at }}
               className="inline-flex h-10 items-center gap-2 rounded-md border border-line px-3 text-sm text-muted hover:text-ink"
             >
               <RotateCcw className="size-4" />
@@ -72,7 +83,7 @@ export function ReadingView({ cast, question }: { cast: Cast; question?: string 
       </header>
 
       <section className="grid gap-4 lg:grid-cols-2" aria-label="卦象">
-        <article className="flex flex-col gap-5 rounded-card border border-line bg-surface p-4 sm:p-5">
+        <article className="flex flex-col gap-5 rounded-card border border-ink/35 bg-surface p-4 shadow-[inset_0_1px_0_rgba(243,236,223,0.08)] sm:p-5">
           <HexagramCard
             hex={cast.ben}
             lines={cast.benLines}
@@ -130,6 +141,15 @@ export function ReadingView({ cast, question }: { cast: Cast; question?: string 
             </p>
           </article>
         )}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2" aria-label="此刻与停处">
+        <article className="flex flex-col gap-3 rounded-card border border-line p-4 sm:p-5">
+          <MomentCard at={at} />
+        </article>
+        <article className="flex flex-col gap-3 rounded-card border border-line p-4 sm:p-5">
+          {cast.method === "ca" ? <StopNotes cast={cast} /> : <YarrowNotes />}
+        </article>
       </section>
 
       <section
@@ -241,11 +261,15 @@ function LinesStrip({ cast }: { cast: Cast }) {
   );
 }
 
-function StaticTape({ cast }: { cast: Extract<Cast, { method: "ca" }> }) {
+type CaReading = Extract<Cast, { method: "ca" }>;
+
+function StaticTape({ cast }: { cast: CaReading }) {
   const rowsRef = useRef(cast.history.rows);
   const firstRef = useRef(cast.history.first);
   rowsRef.current = cast.history.rows;
   firstRef.current = cast.history.first;
+  // Cells are 4 css px tall; an early stop has few rows, so don't leave the rest blank.
+  const height = Math.min(288, Math.max(64, (cast.gen + 2) * 4));
   return (
     <div className="overflow-hidden rounded-md border border-line bg-bg">
       <RingTape
@@ -254,9 +278,61 @@ function StaticTape({ cast }: { cast: Extract<Cast, { method: "ca" }> }) {
         tick={cast.gen}
         head={cast.seed.head}
         focusGen={cast.gen}
-        className="h-56 sm:h-72"
+        className="w-full"
+        style={{ height }}
       />
     </div>
+  );
+}
+
+function StopNotes({ cast }: { cast: CaReading }) {
+  const row = cast.history.rows[cast.gen - cast.history.first];
+  const stats = etherStats(row, cast.seed.head);
+  const echoKing = kingFromRuleNumber(cast.gen);
+  const echo = echoKing ? HEX_BY_KING[echoKing] : null;
+  const rem6 = cast.gen % 6;
+  const echoLine = LINE_NAMES[rem6 === 0 ? 5 : rem6 - 1];
+  return (
+    <>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-xs text-muted">停处 · 第 {cast.gen} 代</p>
+        <p className="font-mono text-[11px] text-muted tabular-nums">
+          约 {(cast.gen * 0.11).toFixed(1)} 秒的推演
+        </p>
+      </div>
+      <PhaseMeter stats={stats} />
+      <p className="text-sm text-pretty leading-relaxed text-muted">
+        {stats.headOnEther
+          ? "读头落在背景里。背景每七代回到原样，所以这一卦更像此刻的势，而不是一件具体的事。"
+          : "读头压着一个不属于背景的结构。这是环上正在发生的事，卦从它身上读出来。"}
+      </p>
+      <div className="border-t border-line pt-3">
+        <p className="text-xs text-muted">代数的回声 · 只是回声，不是证据</p>
+        <p className="mt-1 text-sm text-pretty leading-relaxed text-muted">
+          {echo ? (
+            <>
+              {cast.gen} 除以六十四余 {((cast.gen - 1) % 64) + 1}，对上第 {echo.king} 卦
+              <span className="text-ink">{echo.name}</span>；除以六余 {rem6}
+              {rem6 === 0 ? "（零作六）" : ""}，对上{echoLine}爻。
+              梅花易数以时数取动爻，这里把代数当作时数看一眼，仅此而已。
+            </>
+          ) : (
+            "第 0 代没有余数。还没走一步就停，宇宙只是问题本身。"
+          )}
+        </p>
+      </div>
+    </>
+  );
+}
+
+function YarrowNotes() {
+  return (
+    <>
+      <p className="text-xs text-muted">停处</p>
+      <p className="text-sm text-pretty leading-relaxed text-muted">
+        大衍法六爻一次成，没有推演，也就没有停处可言。十八变的时间都压缩在抽签的一瞬里；此刻的干支就是这一卦唯一的时间。
+      </p>
+    </>
   );
 }
 

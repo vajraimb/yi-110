@@ -5,7 +5,7 @@ import { clampGen } from "@/lib/oracle/universe";
 import { LiveCast } from "@/components/oracle/live-cast";
 import { ReadingView } from "@/components/oracle/reading-view";
 
-type CastSearch = { g?: number; q?: string };
+type CastSearch = { g?: number; q?: string; t?: number };
 
 export const Route = createFileRoute("/cast/$id")({
   validateSearch: (search: Record<string, unknown>): CastSearch => {
@@ -17,14 +17,21 @@ export const Route = createFileRoute("/cast/$id")({
           : undefined;
     const q =
       typeof search.q === "string" && search.q.trim() ? search.q.trim().slice(0, 280) : undefined;
-    return { g, q };
+    const tRaw =
+      typeof search.t === "number"
+        ? search.t
+        : typeof search.t === "string"
+          ? Number(search.t)
+          : NaN;
+    const t = Number.isFinite(tRaw) && tRaw > 0 ? Math.floor(tRaw) : undefined;
+    return { g, q, t };
   },
   component: CastPage,
 });
 
 function CastPage() {
   const { id } = Route.useParams();
-  const { g, q } = Route.useSearch();
+  const { g, q, t } = Route.useSearch();
   const parsed = useMemo(() => parseCastId(id), [id]);
 
   const cast = useMemo(() => {
@@ -41,9 +48,9 @@ function CastPage() {
         {!parsed ? (
           <NotACast />
         ) : cast ? (
-          <ReadingView key={`${cast.id}-${g ?? ""}`} cast={cast} question={q} />
+          <ReadingView key={`${cast.id}-${g ?? ""}`} cast={cast} question={q} at={t} />
         ) : parsed.method === "ca" ? (
-          <LiveCast key={parsed.seed.hex} seed={parsed.seed} question={q} />
+          <LiveCast key={parsed.seed.hex} seed={parsed.seed} question={q} at={t} />
         ) : null}
       </main>
     </>
