@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { caCast, parseCastId, yarrowCast } from "@/lib/oracle/cast";
-import { clampGen } from "@/lib/oracle/universe";
+import { clampGen, clampHead } from "@/lib/oracle/universe";
 import { LiveCast } from "@/components/oracle/live-cast";
 import { ReadingView } from "@/components/oracle/reading-view";
 
-type CastSearch = { g?: number; q?: string; t?: number };
+type CastSearch = { g?: number; q?: string; t?: number; h?: number };
 
 export const Route = createFileRoute("/cast/$id")({
   validateSearch: (search: Record<string, unknown>): CastSearch => {
@@ -24,22 +24,29 @@ export const Route = createFileRoute("/cast/$id")({
           ? Number(search.t)
           : NaN;
     const t = Number.isFinite(tRaw) && tRaw > 0 ? Math.floor(tRaw) : undefined;
-    return { g, q, t };
+    const hRaw =
+      typeof search.h === "number"
+        ? search.h
+        : typeof search.h === "string"
+          ? Number(search.h)
+          : NaN;
+    const h = Number.isFinite(hRaw) ? clampHead(hRaw) : undefined;
+    return { g, q, t, h };
   },
   component: CastPage,
 });
 
 function CastPage() {
   const { id } = Route.useParams();
-  const { g, q, t } = Route.useSearch();
+  const { g, q, t, h } = Route.useSearch();
   const parsed = useMemo(() => parseCastId(id), [id]);
 
   const cast = useMemo(() => {
     if (!parsed) return null;
     if (parsed.method === "yarrow") return yarrowCast(parsed.values);
     if (g === undefined) return null;
-    return caCast(parsed.seed, g);
-  }, [parsed, g]);
+    return caCast(parsed.seed, g, h);
+  }, [parsed, g, h]);
 
   return (
     <>
@@ -48,7 +55,7 @@ function CastPage() {
         {!parsed ? (
           <NotACast />
         ) : cast ? (
-          <ReadingView key={`${cast.id}-${g ?? ""}`} cast={cast} question={q} at={t} />
+          <ReadingView key={`${cast.id}-${g ?? ""}-${h ?? ""}`} cast={cast} question={q} at={t} />
         ) : parsed.method === "ca" ? (
           <LiveCast key={parsed.seed.hex} seed={parsed.seed} question={q} at={t} />
         ) : null}

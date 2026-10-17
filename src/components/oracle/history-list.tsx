@@ -28,14 +28,22 @@ export function HistoryList() {
           const ben = HEX_BY_KING[e.benKing];
           const zhi = HEX_BY_KING[e.zhiKing];
           return (
-            <li key={`${e.id}-${e.gen ?? ""}`} className="flex items-center gap-3 px-3 py-2.5">
+            <li
+              key={`${e.id}-${e.gen ?? ""}-${e.head ?? ""}`}
+              className="flex items-center gap-3 px-3 py-2.5"
+            >
               <div className="w-8 shrink-0">
                 <HexMark lines={ben.lines} size="sm" />
               </div>
               <Link
                 to="/cast/$id"
                 params={{ id: e.id }}
-                search={{ g: e.gen, q: e.question || undefined, t: Math.floor(e.at / 1000) }}
+                search={{
+                  g: e.gen,
+                  q: e.question || undefined,
+                  t: Math.floor(e.at / 1000),
+                  h: e.head,
+                }}
                 className="min-w-0 flex-1"
               >
                 <p className="truncate text-sm">
@@ -50,7 +58,7 @@ export function HistoryList() {
               </Link>
               <button
                 type="button"
-                onClick={() => forget(e.id, e.gen)}
+                onClick={() => forget(e.id, e.gen, e.head)}
                 aria-label="删除这一卦"
                 className="shrink-0 px-2 text-muted hover:text-ink"
               >

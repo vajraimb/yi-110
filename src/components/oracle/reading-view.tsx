@@ -1,18 +1,26 @@
 import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { RotateCcw } from "lucide-react";
-import { HEX_BY_KING, LINE_NAMES, kingFromRuleNumber, type Hexagram } from "@/lib/iching";
+import {
+  HEX_BY_KEY,
+  HEX_BY_KING,
+  LINE_NAMES,
+  kingFromRuleNumber,
+  type Hexagram,
+} from "@/lib/iching";
 import { etherStats } from "@/lib/oracle/ether";
 import type { Cast } from "@/lib/oracle/cast";
 import { useHistory } from "@/lib/oracle/history";
 import type { Passage } from "@/lib/oracle/reading";
 import { nuclearKey } from "@/lib/oracle/relations";
 import { lineTitle, textOf } from "@/lib/oracle/texts";
+import { keyOfLines, stepRing } from "@/lib/oracle/universe";
 import { lineLabel } from "@/lib/yarrow";
-import { YinYangLine } from "@/components/cosmos/hex-mark";
+import { HexMark, YinYangLine } from "@/components/cosmos/hex-mark";
 import { FuxiGrid } from "./fuxi-grid";
 import { HeadLens } from "./head-lens";
 import { HexagramCard } from "./hexagram-card";
+import { LineCauses, RuleTable } from "./line-causes";
 import { MomentCard } from "./moment-card";
 import { NoteBlock } from "./note-block";
 import { PhaseMeter } from "./phase-meter";
@@ -39,6 +47,7 @@ export function ReadingView({
       id: cast.id,
       method: cast.method,
       gen: cast.method === "ca" ? cast.gen : undefined,
+      head: cast.method === "ca" && cast.placed ? cast.head : undefined,
       question: question ?? "",
       at: at ? at * 1000 : Date.now(),
       benKing: cast.ben.king,
@@ -67,7 +76,7 @@ export function ReadingView({
             <Link
               to="/cast/$id"
               params={{ id: cast.id }}
-              search={{ q: question || undefined, g: undefined, t: at }}
+              search={{ q: question || undefined, g: undefined, t: at, h: undefined }}
               className="inline-flex h-10 items-center gap-2 rounded-md border border-line px-3 text-sm text-muted hover:text-ink"
             >
               <RotateCcw className="size-4" />
@@ -114,12 +123,13 @@ export function ReadingView({
             <StaticTape cast={cast} />
             <div className="max-w-xs">
               <p className="mb-1 text-xs text-muted">
-                读头放大 · 第 {cast.seed.head} 格起，含两侧邻居
+                读头放大 · 第 {cast.head} 格起，含两侧邻居 ·{" "}
+                {cast.placed ? "位由你所定" : "位由散列所定"}
               </p>
               <HeadLens
                 benRow={cast.history.rows[cast.gen - cast.history.first]}
                 zhiRow={cast.history.rows[cast.gen + 1 - cast.history.first]}
-                head={cast.seed.head}
+                head={cast.head}
                 changing={cast.changing}
               />
             </div>
@@ -173,14 +183,28 @@ export function ReadingView({
 
       <section className="grid gap-4 lg:grid-cols-2" aria-label="全文与注">
         <article className="flex flex-col gap-3 rounded-card border border-line p-4 sm:p-5">
-          <p className="text-xs text-muted">元胞注 · 本卦</p>
-          <p className="text-pretty leading-relaxed">{cast.ben.gloss}</p>
-          {moved ? (
+          {cast.method === "ca" ? (
             <>
-              <p className="mt-2 text-xs text-muted">元胞注 · 之卦</p>
-              <p className="text-pretty leading-relaxed text-muted">{cast.zhi.gloss}</p>
+              <div>
+                <p className="text-xs text-muted">变爻之因 · 每一爻由哪个三爻体决定</p>
+                <p className="text-sm text-pretty text-muted">
+                  规则 110
+                  看三格定一格，三格就是一个三爻卦：乾、坤、震生阴，兑、离、巽、坎、艮生阳。
+                </p>
+              </div>
+              <LineCauses causes={cast.causes} benLines={cast.benLines} />
             </>
-          ) : null}
+          ) : (
+            <>
+              <div>
+                <p className="text-xs text-muted">一一〇的八卦表</p>
+                <p className="text-sm text-pretty leading-relaxed text-muted">
+                  大衍法的变爻来自成数，不来自邻域，所以这里没有「因」可列。若是元胞起卦，之卦的二至五爻会由本卦的下卦、互卦二体、上卦按这张表决定。
+                </p>
+              </div>
+              <RuleTable compact />
+            </>
+          )}
         </article>
         <article className="flex flex-col gap-3 rounded-card border border-line p-4 sm:p-5">
           <FullText hex={cast.ben} label="本卦全文" open />
@@ -233,7 +257,7 @@ export function ReadingView({
 
       <p className="text-xs text-pretty text-muted [overflow-wrap:anywhere]">
         {cast.method === "ca"
-          ? `这一卦可以完整复现：链接里带着 256 位种子 ${cast.id.slice(0, 12)}… 与停住的代数 ${cast.gen}。任何人打开，都会看到同一条带子、同一个读头、同一卦。`
+          ? `这一卦可以完整复现：链接里带着 256 位种子 ${cast.id.slice(0, 12)}…、停住的代数 ${cast.gen}${cast.placed ? `、你放下读头的第 ${cast.head} 格` : ""}。任何人打开，都会看到同一条带子、同一个读头、同一卦。`
           : "这一卦的六个成数都在链接里，打开即是同一卦。"}
       </p>
     </div>
@@ -278,7 +302,7 @@ function StaticTape({ cast }: { cast: CaReading }) {
         rowsRef={rowsRef}
         firstRef={firstRef}
         tick={cast.gen}
-        head={cast.seed.head}
+        head={cast.head}
         focusGen={cast.gen}
         className="w-full"
         style={{ height }}
@@ -289,7 +313,7 @@ function StaticTape({ cast }: { cast: CaReading }) {
 
 function StopNotes({ cast }: { cast: CaReading }) {
   const row = cast.history.rows[cast.gen - cast.history.first];
-  const stats = etherStats(row, cast.seed.head);
+  const stats = etherStats(row, cast.head);
   const echoKing = kingFromRuleNumber(cast.gen);
   const echo = echoKing ? HEX_BY_KING[echoKing] : null;
   const rem6 = cast.gen % 6;
@@ -308,8 +332,12 @@ function StopNotes({ cast }: { cast: CaReading }) {
           ? "读头落在背景里。背景每七代回到原样，所以这一卦更像此刻的势，而不是一件具体的事。"
           : "读头压着一个不属于背景的结构。这是环上正在发生的事，卦从它身上读出来。"}
       </p>
+      <VerticalReading cast={cast} />
       <div className="border-t border-line pt-3">
-        <p className="text-xs text-muted">代数的回声 · 只是回声，不是证据</p>
+        <p className="text-xs text-muted">回声 · 只是回声，不是证据</p>
+        <p className="mt-1 text-sm text-pretty leading-relaxed text-muted">
+          以太的周期是七代；复卦辞说「反复其道，七日来复」。同一个七，只是回声。
+        </p>
         <p className="mt-1 text-sm text-pretty leading-relaxed text-muted">
           {echo ? (
             <>
@@ -324,6 +352,75 @@ function StopNotes({ cast }: { cast: CaReading }) {
         </p>
       </div>
     </>
+  );
+}
+
+/**
+ * 纵读, a trial: the six lines read down the 初爻 column instead of across
+ * the window. The six generations before the stop are the 本卦 the asker
+ * watched; the six after are the 之卦 the ring went on to without them.
+ */
+function VerticalReading({ cast }: { cast: CaReading }) {
+  const { rows, first } = cast.history;
+  const col = cast.head;
+  const benIdx = cast.gen - first;
+  if (benIdx < 5) {
+    return (
+      <div className="border-t border-line pt-3">
+        <p className="text-xs text-muted">纵读 · 试</p>
+        <p className="mt-1 text-sm text-pretty leading-relaxed text-muted">
+          沿初爻那一格往下读六代也能成卦，停前六代为本、停后六代为之。这次停在第 {cast.gen}{" "}
+          代，还不够六代。
+        </p>
+      </div>
+    );
+  }
+  const benLines: number[] = [];
+  for (let k = 5; k >= 0; k--) benLines.push(rows[benIdx - k][col]);
+  const zhiLines: number[] = [];
+  let row = rows[benIdx];
+  for (let k = 0; k < 6; k++) {
+    row = benIdx + 1 + k < rows.length ? rows[benIdx + 1 + k] : stepRing(row);
+    zhiLines.push(row[col]);
+  }
+  const ben = HEX_BY_KEY[keyOfLines(benLines)];
+  const zhi = HEX_BY_KEY[keyOfLines(zhiLines)];
+  const changing = benLines.map((b, i) => b !== zhiLines[i]);
+  const moved = changing.filter(Boolean).length;
+  return (
+    <div className="border-t border-line pt-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-xs text-muted">纵读 · 试</p>
+        <p className="font-mono text-[11px] text-muted tabular-nums">第 {col} 格 · 时为爻</p>
+      </div>
+      <div className="mt-2 flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8">
+            <HexMark lines={benLines} changing={changing} size="sm" />
+          </div>
+          <div>
+            <p className="text-xs text-muted">停前六代</p>
+            <p className="font-semibold">{ben.name}</p>
+          </div>
+        </div>
+        <span className="text-muted">→</span>
+        <div className="flex items-center gap-2">
+          <div className="w-8">
+            <HexMark lines={zhiLines} size="sm" />
+          </div>
+          <div>
+            <p className="text-xs text-muted">停后六代</p>
+            <p className="font-semibold">
+              {zhi.name}
+              {moved ? <span className="ml-1 text-xs text-muted">{moved} 爻变</span> : null}
+            </p>
+          </div>
+        </div>
+      </div>
+      <p className="mt-2 text-sm text-pretty leading-relaxed text-muted">
+        爻位本是时序：初为始，上为终。横读是此刻的空间，纵读是这一格的时间；之卦在这里是字面的「将往」——你停下后，环接着走的六代。
+      </p>
+    </div>
   );
 }
 
