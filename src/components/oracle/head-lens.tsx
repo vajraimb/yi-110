@@ -50,7 +50,7 @@ function Cell({ on, outside, hot }: { on: boolean; outside: boolean; hot?: boole
   return (
     <span
       className={cx(
-        "block aspect-square rounded-sm border",
+        "block h-8 rounded-sm border sm:h-9",
         on
           ? hot
             ? "border-cinnabar bg-cinnabar"

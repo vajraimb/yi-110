@@ -13,6 +13,8 @@ type Props = {
   className?: string;
 };
 
+const MIN_CELL_CSS = 4;
+
 function readCssColor(name: string, fallback: string): string {
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   return value || fallback;
@@ -37,7 +39,12 @@ export function RingTape({ rowsRef, firstRef, tick, head, focusGen, className }:
       if (cssW < 2 || cssH < 2) return;
       canvas.width = Math.max(1, Math.round(cssW * dpr));
       canvas.height = Math.max(1, Math.round(cssH * dpr));
-      const cell = canvas.width / RING;
+      // Never let a cell drop under MIN_CELL_CSS: on narrow screens show a
+      // zoomed arc of the ring centred on the read head instead.
+      const cell = Math.max(canvas.width / RING, MIN_CELL_CSS * dpr);
+      const viewCols = Math.min(RING, Math.floor(canvas.width / cell));
+      const zoomed = viewCols < RING;
+      const cam = zoomed ? (((head + 3 - (viewCols >> 1)) % RING) + RING) % RING : 0;
       const viewRows = Math.max(1, Math.floor(canvas.height / cell));
       const rows = rowsRef.current ?? [];
       const first = firstRef.current ?? 0;
@@ -61,24 +68,30 @@ export function RingTape({ rowsRef, firstRef, tick, head, focusGen, className }:
         const prev = r > 0 ? rows[r - 1] : null;
         if (!row) continue;
         const y = (r - start) * cell;
-        for (let c = 0; c < RING; c++) {
-          if (!row[c]) continue;
-          const born = !prev || !prev[c];
+        for (let c = 0; c < viewCols; c++) {
+          const col = (cam + c) % RING;
+          if (!row[col]) continue;
+          const born = !prev || !prev[col];
           ctx.fillStyle = born ? hot : paper;
           ctx.fillRect(c * cell, y, cell + 0.4, cell + 0.4);
         }
       }
 
-      // The read head: six columns, possibly wrapping the ring.
+      // The read head's six columns in view space, split where they wrap or leave the view.
       const bands: Array<[number, number]> = [];
-      if (head + 6 <= RING) bands.push([head, 6]);
-      else bands.push([head, RING - head], [0, head + 6 - RING]);
+      for (let i = 0; i < 6; i++) {
+        const vc = (((head + i - cam) % RING) + RING) % RING;
+        if (vc >= viewCols) continue;
+        const last = bands[bands.length - 1];
+        if (last && last[0] + last[1] === vc) last[1] += 1;
+        else bands.push([vc, 1]);
+      }
       ctx.fillStyle = "rgba(226, 61, 50, 0.14)";
       for (const [x, w] of bands) ctx.fillRect(x * cell, 0, w * cell, canvas.height);
 
       if (focusGen !== null) {
         const fr = focusGen - first;
-        const lw = Math.max(1, Math.round(dpr));
+        const lw = Math.max(1, Math.round(dpr * 1.5));
         ctx.lineWidth = lw;
         for (const [x, w] of bands) {
           if (fr >= start && fr <= lastIndex) {

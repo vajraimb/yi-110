@@ -8,7 +8,7 @@ const ITEMS = [
 
 export function AppNav() {
   return (
-    <nav className="sticky top-0 z-40 border-b border-line bg-bg/95 backdrop-blur">
+    <nav className="border-b border-line bg-bg">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5">
         <Link to="/" className="flex items-baseline gap-2 text-ink">
           <span className="text-lg font-semibold tracking-widest">一一〇</span>

@@ -92,7 +92,8 @@ function Row({
             key={cell.key}
             title={`${hex.king} ${hex.name}`}
             className={cx(
-              "flex aspect-square flex-col items-center justify-center gap-0.5 rounded-sm border p-0.5 sm:p-1",
+              // Explicit heights: aspect-ratio items inside a flex column collapse the parent on iOS Safari.
+              "flex h-9 flex-col items-center justify-center gap-0.5 rounded-sm border p-0.5 sm:h-14 sm:p-1",
               isBen
                 ? "border-cinnabar bg-cinnabar/20"
                 : isZhi

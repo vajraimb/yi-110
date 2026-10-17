@@ -96,7 +96,7 @@ export function ReadingView({ cast, question }: { cast: Cast; question?: string 
               <p className="text-xs text-muted">时空图 · 停住前的历史</p>
               <p className="text-sm text-pretty text-muted">
                 朱砂框是第 {cast.gen} 代的读头，本卦；下一行虚框是第 {cast.gen + 1}{" "}
-                代，之卦。翻转的细胞就是变爻。
+                代，之卦。翻转的细胞就是变爻。窄屏只显示读头附近的一段环。
               </p>
             </div>
             <StaticTape cast={cast} />
