@@ -1,5 +1,5 @@
 {
-  "title": "一一〇",
-  "type": "x:game",
+  "title": "一一〇 · 元胞问卦",
+  "description": "把问题哈希成 256 个细胞，让规则 110 推演；停住的六格就是你的卦。",
   "card": "custom"
 }
