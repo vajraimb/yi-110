@@ -64,7 +64,7 @@ export function ReadingView({
       <header className="flex flex-col gap-3">
         <p className="font-mono text-xs tracking-wide text-cinnabar">
           {cast.method === "ca"
-            ? `元胞起卦 · 规则 110 · 停于第 ${cast.gen} 代`
+            ? `元胞起卦 · 规则 110 · 停于第 ${cast.gen} 代 · 位于第 ${cast.head} 格`
             : "大衍起卦 · 十六分之成数"}
         </p>
         <h1 className="text-2xl font-semibold text-balance sm:text-3xl">
