@@ -1,0 +1,178 @@
+{
+  "status": "JS 版已跑验收，OCaml 版的一致性待验证",
+  "tableHash": "b60de6fe6a63bece1ebd582f5b0dc2ae2b6209f05d100dbe605b9c408e5096a7",
+  "width": 126,
+  "safeSteps": 120,
+  "inputs": 4096,
+  "cyclePattern": "00010011011111",
+  "settleRing": [
+    140,
+    196,
+    206,
+    207,
+    220,
+    221,
+    222,
+    223,
+    236
+  ],
+  "settle": [
+    196,
+    236
+  ],
+  "open": [
+    60,
+    102,
+    153,
+    195
+  ],
+  "index": "(zhi * 17 + 3) mod familySize",
+  "cycle": {
+    "background": "cycle",
+    "settle": {
+      "n": 2688,
+      "entropy": 4.416
+    },
+    "open": {
+      "n": 1408,
+      "entropy": 5.582
+    },
+    "rules": {
+      "60": {
+        "n": 320,
+        "diffStop": 1,
+        "diffIfPlanted": 1,
+        "diffAlong": 1,
+        "maxShare": 0.1563,
+        "zhiN": 5,
+        "valueN": 24,
+        "moved": 1
+      },
+      "102": {
+        "n": 320,
+        "diffStop": 1,
+        "diffIfPlanted": 1,
+        "diffAlong": 1,
+        "maxShare": 0.0656,
+        "zhiN": 5,
+        "valueN": 28,
+        "moved": 1
+      },
+      "153": {
+        "n": 704,
+        "diffStop": 1,
+        "diffIfPlanted": 1,
+        "diffAlong": 1,
+        "maxShare": 0.0469,
+        "zhiN": 11,
+        "valueN": 56,
+        "moved": 1
+      },
+      "195": {
+        "n": 64,
+        "diffStop": 1,
+        "diffIfPlanted": 1,
+        "diffAlong": 1,
+        "maxShare": 0.3125,
+        "zhiN": 1,
+        "valueN": 7,
+        "moved": 1
+      },
+      "196": {
+        "n": 1024,
+        "diffStop": 1,
+        "diffIfPlanted": 1,
+        "diffAlong": 1,
+        "maxShare": 0.1875,
+        "zhiN": 16,
+        "valueN": 9,
+        "moved": 0.6875
+      },
+      "236": {
+        "n": 1664,
+        "diffStop": 0.9615,
+        "diffIfPlanted": 1,
+        "diffAlong": 0.9597,
+        "maxShare": 0.1538,
+        "zhiN": 26,
+        "valueN": 16,
+        "moved": 0.6923
+      }
+    },
+    "missed": []
+  },
+  "zero": {
+    "background": "zero",
+    "settle": {
+      "n": 2688,
+      "entropy": 4.821
+    },
+    "open": {
+      "n": 1408,
+      "entropy": 5.637
+    },
+    "rules": {
+      "60": {
+        "n": 320,
+        "diffStop": 1,
+        "diffIfPlanted": 1,
+        "diffAlong": 1,
+        "maxShare": 0.0938,
+        "zhiN": 5,
+        "valueN": 23,
+        "moved": 0.9406
+      },
+      "102": {
+        "n": 320,
+        "diffStop": 1,
+        "diffIfPlanted": 1,
+        "diffAlong": 1,
+        "maxShare": 0.0656,
+        "zhiN": 5,
+        "valueN": 29,
+        "moved": 0.9406
+      },
+      "153": {
+        "n": 704,
+        "diffStop": 1,
+        "diffIfPlanted": 1,
+        "diffAlong": 1,
+        "maxShare": 0.0426,
+        "zhiN": 11,
+        "valueN": 50,
+        "moved": 1
+      },
+      "195": {
+        "n": 64,
+        "diffStop": 1,
+        "diffIfPlanted": 1,
+        "diffAlong": 1,
+        "maxShare": 0.3125,
+        "zhiN": 1,
+        "valueN": 4,
+        "moved": 1
+      },
+      "196": {
+        "n": 1024,
+        "diffStop": 1,
+        "diffIfPlanted": 1,
+        "diffAlong": 1,
+        "maxShare": 0.125,
+        "zhiN": 16,
+        "valueN": 13,
+        "moved": 0.5
+      },
+      "236": {
+        "n": 1664,
+        "diffStop": 0.9615,
+        "diffIfPlanted": 1,
+        "diffAlong": 0.9581,
+        "maxShare": 0.0769,
+        "zhiN": 26,
+        "valueN": 21,
+        "moved": 0.3077
+      }
+    },
+    "missed": []
+  }
+}

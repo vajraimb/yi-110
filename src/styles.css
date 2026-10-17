@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #14110e;
+  --color-surface: #1e1a16;
+  --color-ink: #f3ecdf;
+  --color-muted: #a3988c;
+  --color-line: #3a332c;
+  --color-cinnabar: #e23d32;
+  --font-serif: "Noto Serif SC", "Songti SC", "Noto Serif CJK SC", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius-card: 0.75rem;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--color-bg);
+    color: var(--color-ink);
+  }
+  body {
+    font-family: var(--font-serif);
+    background: var(--color-bg);
+    color: var(--color-ink);
+    min-height: 100dvh;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-cinnabar);
+    outline-offset: 2px;
+  }
+  input[type="range"] {
+    accent-color: var(--color-cinnabar);
+    height: 2.75rem;
+    width: 100%;
+  }
+}
+
+.stage {
+  height: 46vh;
+  min-height: 18rem;
+}
+
+@media (min-width: 64rem) {
+  .stage {
+    height: 72vh;
+    min-height: 32rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
