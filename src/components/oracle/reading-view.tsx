@@ -1,20 +1,14 @@
 import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { RotateCcw } from "lucide-react";
-import {
-  HEX_BY_KEY,
-  HEX_BY_KING,
-  LINE_NAMES,
-  kingFromRuleNumber,
-  type Hexagram,
-} from "@/lib/iching";
+import { HEX_BY_KING, LINE_NAMES, kingFromRuleNumber, type Hexagram } from "@/lib/iching";
 import { etherStats } from "@/lib/oracle/ether";
 import type { Cast } from "@/lib/oracle/cast";
 import { useHistory } from "@/lib/oracle/history";
 import type { Passage } from "@/lib/oracle/reading";
 import { nuclearKey } from "@/lib/oracle/relations";
 import { lineTitle, textOf } from "@/lib/oracle/texts";
-import { keyOfLines, stepRing } from "@/lib/oracle/universe";
+import { verticalCast } from "@/lib/oracle/vertical";
 import { lineLabel } from "@/lib/yarrow";
 import { HexMark, YinYangLine } from "@/components/cosmos/hex-mark";
 import { FuxiGrid } from "./fuxi-grid";
@@ -357,14 +351,12 @@ function StopNotes({ cast }: { cast: CaReading }) {
 
 /**
  * 纵读, a trial: the six lines read down the 初爻 column instead of across
- * the window. The six generations before the stop are the 本卦 the asker
- * watched; the six after are the 之卦 the ring went on to without them.
+ * the window. Secondary by design — it gets its own main passage so it can
+ * be read, but the window's 占断 stays the only verdict.
  */
 function VerticalReading({ cast }: { cast: CaReading }) {
-  const { rows, first } = cast.history;
-  const col = cast.head;
-  const benIdx = cast.gen - first;
-  if (benIdx < 5) {
+  const v = verticalCast(cast);
+  if (!v) {
     return (
       <div className="border-t border-line pt-3">
         <p className="text-xs text-muted">纵读 · 试</p>
@@ -375,50 +367,45 @@ function VerticalReading({ cast }: { cast: CaReading }) {
       </div>
     );
   }
-  const benLines: number[] = [];
-  for (let k = 5; k >= 0; k--) benLines.push(rows[benIdx - k][col]);
-  const zhiLines: number[] = [];
-  let row = rows[benIdx];
-  for (let k = 0; k < 6; k++) {
-    row = benIdx + 1 + k < rows.length ? rows[benIdx + 1 + k] : stepRing(row);
-    zhiLines.push(row[col]);
-  }
-  const ben = HEX_BY_KEY[keyOfLines(benLines)];
-  const zhi = HEX_BY_KEY[keyOfLines(zhiLines)];
-  const changing = benLines.map((b, i) => b !== zhiLines[i]);
-  const moved = changing.filter(Boolean).length;
+  const main = v.reading.passages.find((p) => p.primary) ?? v.reading.passages[0];
   return (
     <div className="border-t border-line pt-3">
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-xs text-muted">纵读 · 试</p>
-        <p className="font-mono text-[11px] text-muted tabular-nums">第 {col} 格 · 时为爻</p>
+        <p className="text-xs text-muted">纵读 · 试 · 副读，不入占断</p>
+        <p className="font-mono text-[11px] text-muted tabular-nums">第 {v.column} 格 · 时为爻</p>
       </div>
       <div className="mt-2 flex items-center gap-4">
         <div className="flex items-center gap-2">
           <div className="w-8">
-            <HexMark lines={benLines} changing={changing} size="sm" />
+            <HexMark lines={v.benLines} changing={v.changing} size="sm" />
           </div>
           <div>
             <p className="text-xs text-muted">停前六代</p>
-            <p className="font-semibold">{ben.name}</p>
+            <p className="font-semibold">{v.ben.name}</p>
           </div>
         </div>
         <span className="text-muted">→</span>
         <div className="flex items-center gap-2">
           <div className="w-8">
-            <HexMark lines={zhiLines} size="sm" />
+            <HexMark lines={v.zhiLines} size="sm" />
           </div>
           <div>
             <p className="text-xs text-muted">停后六代</p>
             <p className="font-semibold">
-              {zhi.name}
-              {moved ? <span className="ml-1 text-xs text-muted">{moved} 爻变</span> : null}
+              {v.zhi.name}
+              {v.changes ? <span className="ml-1 text-xs text-muted">{v.changes} 爻变</span> : null}
             </p>
           </div>
         </div>
       </div>
+      <div className="mt-3 border-l-2 border-line pl-3">
+        <p className="text-xs text-muted">
+          {main.title} · {v.reading.rule}
+        </p>
+        <p className="mt-0.5 text-pretty leading-relaxed">{main.text}</p>
+      </div>
       <p className="mt-2 text-sm text-pretty leading-relaxed text-muted">
-        爻位本是时序：初为始，上为终。横读是此刻的空间，纵读是这一格的时间；之卦在这里是字面的「将往」——你停下后，环接着走的六代。
+        横读为体，是此刻的局面；纵读为用，是你这一格的进程。爻位本是时序，之卦在这里是字面的「将往」——你停下后，环接着走的六代。两者相合则势与程同向，相反则局面与进程各有其时；以横读为准。
       </p>
     </div>
   );

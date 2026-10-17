@@ -4,6 +4,7 @@ import { fourPillars } from "@/lib/oracle/ganzhi";
 import type { Cast } from "@/lib/oracle/cast";
 import { describeCauses } from "@/lib/oracle/causes";
 import { lineTitle, textOf } from "@/lib/oracle/texts";
+import { describeVertical, verticalCast } from "@/lib/oracle/vertical";
 import { useMounted } from "@/lib/use-mounted";
 
 function cacheKey(cast: Cast, question: string): string {
@@ -38,6 +39,7 @@ function requestOf(cast: Cast, question: string, at?: number): NoteRequest {
     pillars,
     background: `${cast.ben.name}：${textOf(cast.ben.king).judgment} ${cast.zhi.name}：${textOf(cast.zhi.king).judgment}`,
     causes: cast.method === "ca" ? describeCauses(cast.causes) : "",
+    vertical: cast.method === "ca" ? describeVertical(verticalCast(cast)) : "",
   };
 }
 

@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import { HEX_BY_KEY, HEX_BY_KING } from "../iching.ts";
 import { caCast, parseCastId, yarrowCast, yarrowId } from "./cast.ts";
 import { describeCauses, lineCauses, outputOf, ruleTable } from "./causes.ts";
+import { describeVertical, verticalCast } from "./vertical.ts";
 import { ETHER, etherStats } from "./ether.ts";
 import { FUXI_GRID, fuxiOrdinal } from "./fuxi.ts";
 import { dayPillar, fourPillars, solarMonth, termDay } from "./ganzhi.ts";
@@ -162,6 +163,25 @@ describe("causes", () => {
     assert.equal(b.head, (seed.head + 17) % 256);
     assert.deepEqual(caCast(seed, 40, seed.head).placed, false);
     assert.equal(caCast(seed, 40, -1).head, 255);
+  });
+});
+
+describe("vertical", () => {
+  it("needs six generations, then reads the head column down in time", () => {
+    const seed = seedFromHex("ab".repeat(32))!;
+    assert.equal(verticalCast(caCast(seed, 4)), null);
+    const cast = caCast(seed, 40);
+    const v = verticalCast(cast)!;
+    assert.equal(v.column, cast.head);
+    const { rows, first } = cast.history;
+    for (let k = 0; k < 6; k++) {
+      assert.equal(v.benLines[k], rows[40 - 5 + k - first][cast.head]);
+    }
+    assert.equal(v.zhiLines[0], rows[41 - first][cast.head]);
+    assert.equal(v.changes, v.changing.filter(Boolean).length);
+    assert.ok(v.reading.passages.length > 0);
+    assert.match(describeVertical(v), /主经文/);
+    assert.equal(describeVertical(null), "");
   });
 });
 
