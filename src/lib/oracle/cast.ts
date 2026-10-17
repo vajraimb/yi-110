@@ -6,11 +6,14 @@
  */
 
 import type { Hexagram } from "../iching.ts";
+import { lineCauses, type LineCause } from "./causes.ts";
 import { hexOfKey, relationsOf, type Relations } from "./relations.ts";
 import { readCast, type Reading } from "./reading.ts";
 import {
+  clampHead,
   keyOfLines,
   readHead,
+  readWindow,
   replay,
   seedFromHex,
   type RingHistory,
@@ -38,7 +41,13 @@ export type CaCast = CastBase & {
   method: "ca";
   seed: Seed;
   gen: number;
+  /** Column of the 初爻. The seed's own head unless the asker placed it. */
+  head: number;
+  placed: boolean;
   history: RingHistory;
+  /** 本卦 row around the head: neighbour, six lines, neighbour. */
+  window: number[];
+  causes: LineCause[];
 };
 
 export type YarrowCast = CastBase & {
@@ -67,13 +76,27 @@ function finish(benLines: number[], zhiLines: number[]) {
   };
 }
 
-export function caCast(seed: Seed, gen: number): CaCast {
+export function caCast(seed: Seed, gen: number, head?: number): CaCast {
+  const placed = head !== undefined && clampHead(head) !== seed.head;
+  const at = head === undefined ? seed.head : clampHead(head);
   const history = replay(seed, gen);
   const benRow = history.rows[gen - history.first];
   const zhiRow = history.rows[gen + 1 - history.first];
-  const benLines = readHead(benRow, seed.head);
-  const zhiLines = readHead(zhiRow, seed.head);
-  return { id: seed.hex, method: "ca", seed, gen, history, ...finish(benLines, zhiLines) };
+  const benLines = readHead(benRow, at);
+  const zhiLines = readHead(zhiRow, at);
+  const window = readWindow(benRow, at);
+  return {
+    id: seed.hex,
+    method: "ca",
+    seed,
+    gen,
+    head: at,
+    placed,
+    history,
+    window,
+    causes: lineCauses(window),
+    ...finish(benLines, zhiLines),
+  };
 }
 
 export function yarrowId(values: readonly LineValue[]): string {

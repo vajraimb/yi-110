@@ -68,6 +68,18 @@ export function readHead(row: Uint8Array, head: number): number[] {
   return lines;
 }
 
+/** The window plus one neighbour on each side: eight cells, head - 1 first. */
+export function readWindow(row: Uint8Array, head: number): number[] {
+  const cells: number[] = [];
+  for (let i = -1; i < 7; i++) cells.push(row[(head + i + RING) % RING]);
+  return cells;
+}
+
+export function clampHead(head: number): number {
+  if (!Number.isFinite(head)) return 0;
+  return ((Math.floor(head) % RING) + RING) % RING;
+}
+
 export function keyOfLines(lines: readonly number[]): number {
   let key = 0;
   for (let i = 0; i < 6; i++) if (lines[i]) key |= 1 << i;

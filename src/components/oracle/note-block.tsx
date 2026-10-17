@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { annotateCast, type NoteRequest } from "@/lib/oracle/annotate";
 import { fourPillars } from "@/lib/oracle/ganzhi";
 import type { Cast } from "@/lib/oracle/cast";
-import { lineTitle } from "@/lib/oracle/texts";
+import { describeCauses } from "@/lib/oracle/causes";
+import { lineTitle, textOf } from "@/lib/oracle/texts";
 import { useMounted } from "@/lib/use-mounted";
 
 function cacheKey(cast: Cast, question: string): string {
-  const gen = cast.method === "ca" ? String(cast.gen) : "y";
-  return `yi110-note:${cast.id}:${gen}:${question}`;
+  const where = cast.method === "ca" ? `${cast.gen}:${cast.head}` : "y";
+  return `yi110-note:${cast.id}:${where}:${question}`;
 }
 
 function requestOf(cast: Cast, question: string, at?: number): NoteRequest {
@@ -35,19 +36,12 @@ function requestOf(cast: Cast, question: string, at?: number): NoteRequest {
     })),
     shadows: `互${cast.relations.nuclear.name}、错${cast.relations.opposite.name}、综${cast.relations.reverse.name}`,
     pillars,
-    gloss: `${cast.ben.name}：${cast.ben.gloss} ${cast.zhi.name}：${cast.zhi.gloss}`,
+    background: `${cast.ben.name}：${textOf(cast.ben.king).judgment} ${cast.zhi.name}：${textOf(cast.zhi.king).judgment}`,
+    causes: cast.method === "ca" ? describeCauses(cast.causes) : "",
   };
 }
 
-export function NoteBlock({
-  cast,
-  question,
-  at,
-}: {
-  cast: Cast;
-  question?: string;
-  at?: number;
-}) {
+export function NoteBlock({ cast, question, at }: { cast: Cast; question?: string; at?: number }) {
   const mounted = useMounted();
   const asked = question?.trim() ?? "";
   const key = cacheKey(cast, asked);
@@ -67,7 +61,9 @@ export function NoteBlock({
     setBusy(true);
     setError("");
     try {
-      const result = await annotateCast({ data: requestOf(cast, asked || "没有写下具体的问题", at) });
+      const result = await annotateCast({
+        data: requestOf(cast, asked || "没有写下具体的问题", at),
+      });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -81,7 +77,11 @@ export function NoteBlock({
     }
   }
 
-  const paragraphs = text?.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean) ?? [];
+  const paragraphs =
+    text
+      ?.split(/\n{2,}/)
+      .map((p) => p.trim())
+      .filter(Boolean) ?? [];
 
   return (
     <div className="mt-6 border-t border-line pt-5">

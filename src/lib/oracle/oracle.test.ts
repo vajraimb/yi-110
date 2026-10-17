@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { describe, it } from "node:test";
 import { HEX_BY_KEY, HEX_BY_KING } from "../iching.ts";
 import { caCast, parseCastId, yarrowCast, yarrowId } from "./cast.ts";
+import { describeCauses, lineCauses, outputOf, ruleTable } from "./causes.ts";
 import { ETHER, etherStats } from "./ether.ts";
 import { FUXI_GRID, fuxiOrdinal } from "./fuxi.ts";
 import { dayPillar, fourPillars, solarMonth, termDay } from "./ganzhi.ts";
@@ -102,6 +103,65 @@ describe("reading", () => {
     const four = readCast(qian, kun, [true, true, true, true, false, false]);
     assert.equal(four.passages[0].from, "zhi");
     assert.equal(four.passages[0].line, 4);
+  });
+});
+
+describe("causes", () => {
+  it("Rule 110 as a trigram table: 乾坤震 give yin, the other five give yang", () => {
+    const table = Object.fromEntries(ruleTable().map((r) => [r.trigram.name, r.out]));
+    assert.deepEqual(table, { 乾: 0, 兑: 1, 离: 1, 震: 0, 巽: 1, 坎: 1, 艮: 1, 坤: 0 });
+    assert.equal(outputOf(7), 0);
+    assert.equal(outputOf(2), 1);
+  });
+
+  it("泰之贲: 下卦乾 flips 二爻, the window's right neighbour flips 上爻", () => {
+    // neighbour, 泰 (111000), neighbour
+    const causes = lineCauses([0, 1, 1, 1, 0, 0, 0, 1]);
+    assert.deepEqual(
+      causes.map((c) => c.trigram.name),
+      ["巽", "乾", "兑", "震", "坤", "艮"],
+    );
+    assert.deepEqual(
+      causes.map((c) => c.changes),
+      [false, true, false, false, false, true],
+    );
+    assert.deepEqual(
+      causes.map((c) => c.source),
+      ["外左", "下卦", "互下", "互上", "上卦", "外右"],
+    );
+    assert.match(describeCauses(causes), /二爻：下卦为乾，乾生阴，本阳，故变/);
+  });
+
+  it("鼎之履: 互下乾 flips 九三, 上卦离 flips 六五", () => {
+    const causes = lineCauses([1, 0, 1, 1, 1, 0, 1, 0]);
+    assert.equal(causes[2].trigram.name, "乾");
+    assert.equal(causes[2].changes, true);
+    assert.equal(causes[4].trigram.name, "离");
+    assert.equal(causes[4].changes, true);
+    assert.equal(causes[1].changes, false);
+    assert.equal(causes[3].changes, false);
+  });
+
+  it("the middle four lines of a cast's 之卦 agree with the causes", () => {
+    const seed = seedFromHex("ab".repeat(32))!;
+    for (const gen of [0, 7, 120, 777]) {
+      const cast = caCast(seed, gen);
+      for (let i = 0; i < 6; i++) {
+        assert.equal(cast.causes[i].changes, cast.changing[i], `gen ${gen} line ${i}`);
+        assert.equal(cast.causes[i].produces, cast.zhiLines[i]);
+      }
+    }
+  });
+
+  it("a placed head reads a different window of the same ring", () => {
+    const seed = seedFromHex("ab".repeat(32))!;
+    const a = caCast(seed, 40);
+    const b = caCast(seed, 40, (seed.head + 17) % 256);
+    assert.equal(a.placed, false);
+    assert.equal(b.placed, true);
+    assert.equal(b.head, (seed.head + 17) % 256);
+    assert.deepEqual(caCast(seed, 40, seed.head).placed, false);
+    assert.equal(caCast(seed, 40, -1).head, 255);
   });
 });
 
