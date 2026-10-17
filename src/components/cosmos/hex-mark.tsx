@@ -6,20 +6,25 @@ export function HexMark({
   lines,
   changing,
   className,
+  size = "md",
 }: {
   lines: readonly number[];
   changing?: readonly boolean[];
   className?: string;
+  size?: "md" | "sm";
 }) {
+  const bar = size === "sm" ? "h-0.5" : "h-1.5";
+  const gap = size === "sm" ? "gap-0.5" : "gap-1";
+  const split = size === "sm" ? "gap-1" : "gap-1.5";
   return (
-    <div className={cx("flex w-full flex-col-reverse gap-1", className)} aria-hidden>
+    <div className={cx("flex w-full flex-col-reverse", gap, className)} aria-hidden>
       {lines.map((bit, i) => {
         const tone = changing?.[i] ? "bg-cinnabar" : "bg-ink";
         if (bit) {
-          return <span key={i} className={cx("h-1.5 w-full", tone)} />;
+          return <span key={i} className={cx("w-full", bar, tone)} />;
         }
         return (
-          <span key={i} className="flex h-1.5 w-full gap-1.5">
+          <span key={i} className={cx("flex w-full", bar, split)}>
             <span className={cx("h-full flex-1", tone)} />
             <span className={cx("h-full flex-1", tone)} />
           </span>
