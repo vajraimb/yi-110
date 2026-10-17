@@ -14,6 +14,7 @@ import { FuxiGrid } from "./fuxi-grid";
 import { HeadLens } from "./head-lens";
 import { HexagramCard } from "./hexagram-card";
 import { MomentCard } from "./moment-card";
+import { NoteBlock } from "./note-block";
 import { PhaseMeter } from "./phase-meter";
 import { RingTape } from "./ring-tape";
 import { ShareButton } from "./share-button";
@@ -167,6 +168,7 @@ export function ReadingView({
             <PassageItem key={`${p.from}-${p.kind}-${p.line ?? ""}-${i}`} passage={p} />
           ))}
         </ol>
+        <NoteBlock cast={cast} question={question} at={at} />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2" aria-label="全文与注">
