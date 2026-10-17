@@ -11,14 +11,15 @@ export function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
 }
 
-export function stepRow(row: Uint8Array, rule: number): Uint8Array {
+/** One generation. Open boundaries read 0 outside; periodic ones wrap the row into a ring. */
+export function stepRow(row: Uint8Array, rule: number, periodic = false): Uint8Array {
   const n = row.length;
   const next = new Uint8Array(n);
   const r = rule & 255;
   for (let i = 0; i < n; i++) {
-    const left = i > 0 ? row[i - 1] : 0;
+    const left = i > 0 ? row[i - 1] : periodic ? row[n - 1] : 0;
     const center = row[i];
-    const right = i + 1 < n ? row[i + 1] : 0;
+    const right = i + 1 < n ? row[i + 1] : periodic ? row[0] : 0;
     const nb = (left << 2) | (center << 1) | right;
     next[i] = (r >> nb) & 1;
   }
