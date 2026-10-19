@@ -1,0 +1,254 @@
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { describe, it } from "node:test";
+import { HEX_BY_KEY, HEX_BY_KING } from "../iching.ts";
+import { caCast, parseCastId, yarrowCast, yarrowId } from "./cast.ts";
+import { describeCauses, lineCauses, outputOf, ruleTable } from "./causes.ts";
+import { describeVertical, verticalCast } from "./vertical.ts";
+import { ETHER, etherStats } from "./ether.ts";
+import { FUXI_GRID, fuxiOrdinal } from "./fuxi.ts";
+import { dayPillar, fourPillars, solarMonth, termDay } from "./ganzhi.ts";
+import { readCast } from "./reading.ts";
+import { nuclearKey, oppositeKey, reverseKey } from "./relations.ts";
+import { sha256, toHex } from "./sha256.ts";
+import { lineTitle, textOf } from "./texts.ts";
+import {
+  RING,
+  initialRing,
+  keyOfLines,
+  readHead,
+  seedFromHex,
+  seedFromQuestion,
+  stepRing,
+} from "./universe.ts";
+
+describe("sha256", () => {
+  it("matches node for a few inputs", () => {
+    for (const input of ["", "abc", "问：今日宜否出行？\n2026-10-17T07:00:00.000Z\nabcd1234"]) {
+      assert.equal(toHex(sha256(input)), createHash("sha256").update(input).digest("hex"));
+    }
+  });
+});
+
+describe("texts", () => {
+  it("has a judgment, an image and six lines for every hexagram", () => {
+    for (let king = 1; king <= 64; king++) {
+      const t = textOf(king);
+      assert.ok(t.judgment.length > 0, `${king} judgment`);
+      assert.ok(t.image.length > 0, `${king} image`);
+      assert.equal(t.lines.length, 6);
+      for (const line of t.lines) assert.ok(line.length > 0, `${king} line`);
+      assert.ok(t.keyword.length >= 2);
+    }
+    assert.ok(textOf(1).extra?.startsWith("用九"));
+    assert.ok(textOf(2).extra?.startsWith("用六"));
+    assert.equal(textOf(3).extra, undefined);
+  });
+
+  it("names the image after the hexagram (乾 says 天行健 instead)", () => {
+    for (let king = 2; king <= 64; king++) {
+      const hex = HEX_BY_KING[king];
+      assert.ok(
+        textOf(king).image.includes(hex.name),
+        `${king} ${hex.name}: ${textOf(king).image}`,
+      );
+    }
+  });
+
+  it("titles lines by position and polarity", () => {
+    assert.equal(lineTitle(0, true), "初九");
+    assert.equal(lineTitle(1, false), "六二");
+    assert.equal(lineTitle(5, false), "上六");
+  });
+});
+
+describe("relations", () => {
+  it("computes 互卦 错卦 综卦", () => {
+    const qian = 63;
+    assert.equal(nuclearKey(qian), qian);
+    assert.equal(oppositeKey(qian), 0);
+    assert.equal(reverseKey(qian), qian);
+    const tai = HEX_BY_KING[11];
+    const pi = HEX_BY_KING[12];
+    assert.equal(HEX_BY_KEY[reverseKey(keyOfLines(tai.lines))].king, pi.king);
+    assert.equal(HEX_BY_KEY[oppositeKey(keyOfLines(tai.lines))].king, pi.king);
+    // 屯 (lower 震 upper 坎) → 互卦 剥
+    assert.equal(HEX_BY_KEY[nuclearKey(keyOfLines(HEX_BY_KING[3].lines))].king, 23);
+  });
+});
+
+describe("fuxi", () => {
+  it("places 乾 first and 坤 last, with every hexagram once", () => {
+    assert.equal(FUXI_GRID.length, 64);
+    assert.equal(new Set(FUXI_GRID.map((c) => c.key)).size, 64);
+    assert.equal(HEX_BY_KEY[FUXI_GRID[0].key].king, 1);
+    assert.equal(HEX_BY_KEY[FUXI_GRID[63].key].king, 2);
+    assert.equal(fuxiOrdinal(63), 0);
+  });
+});
+
+describe("reading", () => {
+  it("follows 朱熹's rules by number of changing lines", () => {
+    const qian = HEX_BY_KING[1];
+    const kun = HEX_BY_KING[2];
+    assert.equal(
+      readCast(qian, qian, [false, false, false, false, false, false]).passages[0].kind,
+      "judgment",
+    );
+    const one = readCast(qian, HEX_BY_KING[44], [true, false, false, false, false, false]);
+    assert.equal(one.passages[0].line, 0);
+    assert.equal(one.passages[0].from, "ben");
+    const six = readCast(qian, kun, [true, true, true, true, true, true]);
+    assert.equal(six.passages[0].kind, "extra");
+    assert.ok(six.passages[0].text.includes("群龙无首"));
+    const four = readCast(qian, kun, [true, true, true, true, false, false]);
+    assert.equal(four.passages[0].from, "zhi");
+    assert.equal(four.passages[0].line, 4);
+  });
+});
+
+describe("causes", () => {
+  it("Rule 110 as a trigram table: 乾坤震 give yin, the other five give yang", () => {
+    const table = Object.fromEntries(ruleTable().map((r) => [r.trigram.name, r.out]));
+    assert.deepEqual(table, { 乾: 0, 兑: 1, 离: 1, 震: 0, 巽: 1, 坎: 1, 艮: 1, 坤: 0 });
+    assert.equal(outputOf(7), 0);
+    assert.equal(outputOf(2), 1);
+  });
+
+  it("泰之贲: 下卦乾 flips 二爻, the window's right neighbour flips 上爻", () => {
+    // neighbour, 泰 (111000), neighbour
+    const causes = lineCauses([0, 1, 1, 1, 0, 0, 0, 1]);
+    assert.deepEqual(
+      causes.map((c) => c.trigram.name),
+      ["巽", "乾", "兑", "震", "坤", "艮"],
+    );
+    assert.deepEqual(
+      causes.map((c) => c.changes),
+      [false, true, false, false, false, true],
+    );
+    assert.deepEqual(
+      causes.map((c) => c.source),
+      ["外左", "下卦", "互下", "互上", "上卦", "外右"],
+    );
+    assert.match(describeCauses(causes), /二爻：下卦为乾，乾生阴，本阳，故变/);
+  });
+
+  it("鼎之履: 互下乾 flips 九三, 上卦离 flips 六五", () => {
+    const causes = lineCauses([1, 0, 1, 1, 1, 0, 1, 0]);
+    assert.equal(causes[2].trigram.name, "乾");
+    assert.equal(causes[2].changes, true);
+    assert.equal(causes[4].trigram.name, "离");
+    assert.equal(causes[4].changes, true);
+    assert.equal(causes[1].changes, false);
+    assert.equal(causes[3].changes, false);
+  });
+
+  it("the middle four lines of a cast's 之卦 agree with the causes", () => {
+    const seed = seedFromHex("ab".repeat(32))!;
+    for (const gen of [0, 7, 120, 777]) {
+      const cast = caCast(seed, gen);
+      for (let i = 0; i < 6; i++) {
+        assert.equal(cast.causes[i].changes, cast.changing[i], `gen ${gen} line ${i}`);
+        assert.equal(cast.causes[i].produces, cast.zhiLines[i]);
+      }
+    }
+  });
+
+  it("a placed head reads a different window of the same ring", () => {
+    const seed = seedFromHex("ab".repeat(32))!;
+    const a = caCast(seed, 40);
+    const b = caCast(seed, 40, (seed.head + 17) % 256);
+    assert.equal(a.placed, false);
+    assert.equal(b.placed, true);
+    assert.equal(b.head, (seed.head + 17) % 256);
+    assert.deepEqual(caCast(seed, 40, seed.head).placed, false);
+    assert.equal(caCast(seed, 40, -1).head, 255);
+  });
+});
+
+describe("vertical", () => {
+  it("needs six generations, then reads the head column down in time", () => {
+    const seed = seedFromHex("ab".repeat(32))!;
+    assert.equal(verticalCast(caCast(seed, 4)), null);
+    const cast = caCast(seed, 40);
+    const v = verticalCast(cast)!;
+    assert.equal(v.column, cast.head);
+    const { rows, first } = cast.history;
+    for (let k = 0; k < 6; k++) {
+      assert.equal(v.benLines[k], rows[40 - 5 + k - first][cast.head]);
+    }
+    assert.equal(v.zhiLines[0], rows[41 - first][cast.head]);
+    assert.equal(v.changes, v.changing.filter(Boolean).length);
+    assert.ok(v.reading.passages.length > 0);
+    assert.match(describeVertical(v), /主经文/);
+    assert.equal(describeVertical(null), "");
+  });
+});
+
+describe("ether", () => {
+  it("recognises the Rule 110 background and its drift", () => {
+    const row = new Uint8Array(RING);
+    for (let i = 0; i < RING; i++) row[i] = ETHER[i % 14];
+    // 256 is not a multiple of 14, so the seam breaks the pattern once.
+    const stats = etherStats(row, 0);
+    assert.ok(stats.share > 0.85, `share ${stats.share}`);
+    assert.ok(stats.structures <= 1);
+    assert.equal(stats.headOnEther, true);
+    let next: Uint8Array = row;
+    for (let t = 0; t < 7; t++) next = stepRing(next);
+    assert.ok(etherStats(next, 0).share > 0.8);
+    assert.equal(etherStats(initialRing(seedFromQuestion("x", new Date(0))), 0).phase, "raw");
+  });
+});
+
+describe("ganzhi", () => {
+  it("matches known day pillars", () => {
+    assert.equal(dayPillar(2000, 1, 1).text, "戊午");
+    assert.equal(dayPillar(1949, 10, 1).text, "甲子");
+  });
+
+  it("places the 节 on the right days", () => {
+    assert.equal(termDay(2026, 2), 4);
+    assert.equal(termDay(2026, 1), 5);
+    assert.equal(termDay(2026, 10), 8);
+    assert.equal(solarMonth(2026, 10, 17).index, 8);
+    assert.equal(solarMonth(2026, 2, 3).yearOffset, -1);
+    assert.equal(solarMonth(2026, 2, 4).yearOffset, 0);
+  });
+
+  it("builds four pillars with 晚子时 rolling the day", () => {
+    const p = fourPillars(new Date(2026, 9, 17, 16, 53));
+    assert.equal(p.year.text, "丙午");
+    assert.equal(p.month.text, "戊戌");
+    assert.equal(p.hour.branch, 8);
+    assert.equal(p.term, "寒露");
+    const late = fourPillars(new Date(2026, 9, 17, 23, 30));
+    assert.equal(late.day.text, dayPillar(2026, 10, 18).text);
+    assert.equal(late.hour.branch, 0);
+    const beforeSpring = fourPillars(new Date(2026, 1, 3, 10, 0));
+    assert.equal(beforeSpring.year.text, "乙巳");
+  });
+});
+
+describe("universe", () => {
+  it("replays deterministically from the hex", () => {
+    const seed = seedFromQuestion("要不要换工作", new Date(0));
+    const again = seedFromHex(seed.hex);
+    assert.ok(again);
+    assert.deepEqual(initialRing(seed), initialRing(again));
+    const cast = caCast(seed, 37);
+    let row = initialRing(seed);
+    for (let g = 0; g < 37; g++) row = stepRing(row);
+    assert.deepEqual(cast.benLines, readHead(row, seed.head));
+    assert.deepEqual(cast.zhiLines, readHead(stepRing(row), seed.head));
+    assert.equal(cast.history.rows.length <= 320, true);
+  });
+
+  it("parses both id shapes", () => {
+    const y = yarrowCast([6, 7, 8, 9, 7, 8]);
+    assert.equal(y.changing.filter(Boolean).length, 2);
+    assert.equal(parseCastId(yarrowId([6, 7, 8, 9, 7, 8]))?.method, "yarrow");
+    assert.equal(parseCastId("a".repeat(64))?.method, "ca");
+    assert.equal(parseCastId("nope"), null);
+  });
+});

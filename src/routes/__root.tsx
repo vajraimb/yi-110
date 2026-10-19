@@ -1,9 +1,10 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
+import { AppNav } from "@/components/shell/app-nav";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "一一〇";
+const APP_NAME = "一一〇 · 元胞问卦";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -13,7 +14,8 @@ export const Route = createRootRoute({
       { title: APP_NAME },
       {
         name: "description",
-        content: "规则 110 与六十四卦：一条八比特的法律，如何在六爻里被看成世界。",
+        content:
+          "把问题哈希成 256 个细胞，让规则 110 推演，停住的六格就是你的卦。元胞自动机 × 六十四卦的现代起卦。",
       },
       { name: "theme-color", content: "#14110E" },
     ],
@@ -36,7 +38,10 @@ export const Route = createRootRoute({
       <body>
         <PreviewHostBridge />
         <AuthProvider>
-          <Outlet />
+          <div className="min-h-dvh overflow-x-hidden bg-bg text-ink">
+            <AppNav />
+            <Outlet />
+          </div>
         </AuthProvider>
         <Scripts />
       </body>
