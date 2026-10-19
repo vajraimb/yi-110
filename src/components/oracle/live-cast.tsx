@@ -68,6 +68,18 @@ export function LiveCast({ seed, question, at }: { seed: Seed; question?: string
     });
   }, [navigate, seed.hex, seed.head, question, at, pick]);
 
+  // A tap inside the current window keeps it: a finger cannot aim at one
+  // 4px cell, and shifting six cells by even one makes a different hexagram.
+  const place = useCallback(
+    (col: number) => {
+      const current = pick ?? seed.head;
+      const offset = (((col - current) % RING) + RING) % RING;
+      if (offset < 6) return;
+      setPick(col);
+    },
+    [pick, seed.head],
+  );
+
   const nudge = useCallback(
     (delta: number) => setPick((p) => ((((p ?? seed.head) + delta) % RING) + RING) % RING),
     [seed.head],
@@ -137,7 +149,7 @@ export function LiveCast({ seed, question, at }: { seed: Seed; question?: string
         )}
         <p className="text-sm text-pretty text-muted">
           {placing
-            ? "时已定，再定位。点一下带子，点中的格子就是初爻；不点，就用散列定下的读头。"
+            ? "时已定，再定位。点带子上别处，点中的格子就是初爻；点在读头上不动；要挪一两格用箭头。不点，就用散列定下的读头。"
             : "问题已成为初态。读头下的六格每一代都在改写名字。觉得是时候了，就停住。"}
         </p>
       </header>
@@ -150,7 +162,7 @@ export function LiveCast({ seed, question, at }: { seed: Seed; question?: string
           head={head}
           camHead={seed.head}
           focusGen={placing ? gen : null}
-          onPick={placing ? setPick : undefined}
+          onPick={placing ? place : undefined}
         />
         <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-3 rounded-md border border-line bg-bg/90 px-3 py-2">
           <div className="w-10">
@@ -239,7 +251,7 @@ export function LiveCast({ seed, question, at }: { seed: Seed; question?: string
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/95 px-4 py-3 backdrop-blur sm:hidden">
         <p className="mb-2 text-center font-mono text-[11px] text-muted tabular-nums">
           {placing
-            ? `第 ${gen} 代 · 初爻在第 ${head} 格 · 点带子可换`
+            ? `第 ${gen} 代 · 初爻在第 ${head} 格 · 点带子别处可换`
             : `${PHASE_LABEL[stats.phase].name} · 以太 ${Math.round(stats.share * 100)}% · ${stats.structures} 处结构`}
         </p>
         {placing ? (
